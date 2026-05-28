@@ -1022,7 +1022,7 @@
             { label: '🚀 Deployment Guide', path: 'deployment_guide.md', section: 'resources' },
         ];
 
-        let currentPage = null;
+        let currentPage = 'README.md';
 
         /**
          * Sanitize HTML content to prevent script injection and clean up formatting anomalies
@@ -1065,7 +1065,6 @@
          * Initialize app - explicitly load README.md on landing route
          */
         async function init() {
-            buildNavMenu();
             setupMobileMenuToggle();
             
             // Show warning if running locally from file://
@@ -1075,6 +1074,7 @@
             }
             
             // Default landing route: explicitly load README.md
+            // buildNavMenu will be called from within loadPage after currentPage is updated
             await loadPage('README.md');
         }
 
