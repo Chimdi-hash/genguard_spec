@@ -989,7 +989,7 @@
     </style>
 
     <script>
-        // Configure marked options
+        // Configure marked options with proper sanitization
         marked.setOptions({
             breaks: true,
             gfm: true,
@@ -1022,9 +1022,48 @@
             { label: '🚀 Deployment Guide', path: 'deployment_guide.md', section: 'resources' },
         ];
 
-        let currentPage = 'README.md';
+        let currentPage = null;
 
-        // Initialize app
+        /**
+         * Sanitize HTML content to prevent script injection and clean up formatting anomalies
+         * @param {string} html - The HTML to sanitize
+         * @returns {string} - Cleaned HTML safe for innerHTML
+         */
+        function sanitizeHtmlContent(html) {
+            // Create a temporary container to parse and clean the HTML
+            const container = document.createElement('div');
+            container.innerHTML = html;
+            
+            // Remove any script tags or event handlers
+            const scripts = container.querySelectorAll('script');
+            scripts.forEach(script => script.remove());
+            
+            // Remove inline event handlers from all elements
+            container.querySelectorAll('*').forEach(el => {
+                // Remove all event handler attributes
+                Array.from(el.attributes).forEach(attr => {
+                    if (attr.name.toLowerCase().startsWith('on')) {
+                        el.removeAttribute(attr.name);
+                    }
+                });
+            });
+            
+            // Return the cleaned HTML
+            return container.innerHTML;
+        }
+
+        /**
+         * Clear and prepare content area for new content injection
+         */
+        function clearContentArea() {
+            const contentDiv = document.getElementById('content');
+            contentDiv.innerHTML = '';
+            contentDiv.scrollTop = 0;
+        }
+
+        /**
+         * Initialize app - explicitly load README.md on landing route
+         */
         async function init() {
             buildNavMenu();
             setupMobileMenuToggle();
@@ -1035,10 +1074,13 @@
                 showLocalServerWarning();
             }
             
+            // Default landing route: explicitly load README.md
             await loadPage('README.md');
         }
 
-        // Mobile menu toggle
+        /**
+         * Mobile menu toggle functionality
+         */
         function setupMobileMenuToggle() {
             const sidebar = document.getElementById('sidebar');
             const toggle = document.getElementById('sidebar-toggle');
@@ -1071,7 +1113,9 @@
             });
         }
 
-        // Show warning about local file restrictions
+        /**
+         * Show warning about local file restrictions
+         */
         function showLocalServerWarning() {
             const warning = document.createElement('div');
             warning.style.cssText = `
@@ -1109,7 +1153,9 @@
             }, 8000);
         }
 
-        // Build navigation menu
+        /**
+         * Build navigation menu with proper active state
+         */
         function buildNavMenu() {
             const navMenu = document.getElementById('nav-menu');
             navMenu.innerHTML = '';
@@ -1131,9 +1177,12 @@
                     const link = document.createElement('a');
                     link.href = '#';
                     link.className = 'nav-link';
+                    
+                    // Mark as active if path matches current page
                     if (currentPage === item.path) {
                         link.classList.add('active');
                     }
+                    
                     link.textContent = item.label;
                     link.onclick = (e) => {
                         e.preventDefault();
@@ -1156,57 +1205,124 @@
             });
         }
 
-        // Load and render markdown page
+        /**
+         * Fetch markdown file with multiple fallback paths
+         */
+        async function fetchMarkdownFile(path) {
+            const pathVariations = [
+                path,
+                './' + path,
+                '/' + path,
+            ];
+
+            let response = null;
+            let lastError = null;
+
+            for (const pathVariation of pathVariations) {
+                try {
+                    response = await fetch(pathVariation);
+                    if (response.ok) {
+                        console.log('✓ Loaded from:', pathVariation);
+                        return await response.text();
+                    }
+                } catch (err) {
+                    lastError = err;
+                    console.warn('Failed to fetch from:', pathVariation, err.message);
+                }
+            }
+
+            throw new Error(`Could not fetch ${path} from any path variation. ${lastError?.message || 'Check file exists in root directory.'}`);
+        }
+
+        /**
+         * Add copy-to-clipboard functionality to code blocks
+         */
+        function attachCopyButtonsToCodeBlocks() {
+            document.querySelectorAll('pre').forEach((pre) => {
+                // Check if button already exists
+                if (pre.querySelector('.copy-btn')) {
+                    return;
+                }
+
+                const button = document.createElement('button');
+                button.className = 'copy-btn';
+                button.textContent = '📋 Copy';
+                button.style.cssText = `
+                    position: absolute;
+                    top: 12px;
+                    right: 12px;
+                    background: linear-gradient(135deg, #F59E0B, #06B6D4);
+                    color: #0F172A;
+                    border: none;
+                    padding: 8px 16px;
+                    border-radius: 8px;
+                    cursor: pointer;
+                    font-weight: 600;
+                    font-size: 0.85rem;
+                    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+                    z-index: 10;
+                    box-shadow: 0 4px 15px rgba(245, 158, 11, 0.3);
+                    letter-spacing: 0.5px;
+                `;
+
+                button.onmouseover = () => {
+                    button.style.transform = 'translateY(-2px)';
+                    button.style.boxShadow = '0 6px 25px rgba(245, 158, 11, 0.5)';
+                };
+                
+                button.onmouseout = () => {
+                    button.style.transform = 'translateY(0)';
+                    button.style.boxShadow = '0 4px 15px rgba(245, 158, 11, 0.3)';
+                };
+
+                button.onclick = () => {
+                    const code = pre.querySelector('code').textContent;
+                    navigator.clipboard.writeText(code).then(() => {
+                        const originalText = button.textContent;
+                        button.textContent = '✓ Copied!';
+                        button.style.background = 'linear-gradient(135deg, #10B981, #06B6D4)';
+                        setTimeout(() => {
+                            button.textContent = originalText;
+                            button.style.background = 'linear-gradient(135deg, #F59E0B, #06B6D4)';
+                        }, 2000);
+                    });
+                };
+
+                pre.style.position = 'relative';
+                pre.appendChild(button);
+            });
+        }
+
+        /**
+         * Main page loader - fetches README.md and renders markdown content
+         */
         async function loadPage(path) {
+            // Update current page state
             currentPage = path;
 
-            // Update active link
-            document.querySelectorAll('.nav-link').forEach(link => {
-                link.classList.remove('active');
-            });
+            // Clear content area before loading new content
+            clearContentArea();
 
             try {
-                // Try multiple path variations
-                const pathVariations = [
-                    path,
-                    './' + path,
-                    '/' + path,
-                ];
+                // Fetch markdown file with proper error handling
+                const markdown = await fetchMarkdownFile(path);
 
-                let response = null;
-                let lastError = null;
+                // Parse markdown to HTML using marked
+                const rawHtml = marked.parse(markdown);
 
-                for (const pathVariation of pathVariations) {
-                    try {
-                        response = await fetch(pathVariation);
-                        if (response.ok) {
-                            console.log('✓ Loaded from:', pathVariation);
-                            break;
-                        }
-                    } catch (err) {
-                        lastError = err;
-                        console.warn('Failed to fetch from:', pathVariation, err.message);
-                    }
-                }
+                // Sanitize HTML content to remove any script tags or malicious content
+                const cleanHtml = sanitizeHtmlContent(rawHtml);
 
-                if (!response || !response.ok) {
-                    throw new Error(`Could not fetch ${path} from any path variation. ${lastError?.message || 'Check file exists in root directory.'}`);
-                }
-
-                const markdown = await response.text();
-
-                // Parse and render markdown
-                const html = marked.parse(markdown);
-
-                // Extract title from first h1
+                // Extract title from first h1 in markdown
                 const titleMatch = markdown.match(/^#\s+(.+)$/m);
-                const title = titleMatch ? titleMatch[1] : path;
+                const title = titleMatch ? titleMatch[1].trim() : path.replace('.md', '');
                 document.getElementById('page-title').textContent = title;
 
-                // Render content
-                document.getElementById('content').innerHTML = html;
+                // Inject cleaned HTML into content area
+                const contentDiv = document.getElementById('content');
+                contentDiv.innerHTML = cleanHtml;
 
-                // Highlight code blocks (if hljs is available)
+                // Apply syntax highlighting to code blocks (if hljs is available)
                 if (typeof hljs !== 'undefined') {
                     document.querySelectorAll('pre code').forEach(block => {
                         hljs.highlightElement(block);
@@ -1219,65 +1335,19 @@
                     link.rel = 'noopener noreferrer';
                 });
 
-                // Add copy button to code blocks
-                document.querySelectorAll('pre').forEach((pre, index) => {
-                    const button = document.createElement('button');
-                    button.className = 'copy-btn';
-                    button.textContent = '📋 Copy';
-                    button.style.cssText = `
-                        position: absolute;
-                        top: 12px;
-                        right: 12px;
-                        background: linear-gradient(135deg, #F59E0B, #06B6D4);
-                        color: #0F172A;
-                        border: none;
-                        padding: 8px 16px;
-                        border-radius: 8px;
-                        cursor: pointer;
-                        font-weight: 600;
-                        font-size: 0.85rem;
-                        transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-                        z-index: 10;
-                        box-shadow: 0 4px 15px rgba(245, 158, 11, 0.3);
-                        letter-spacing: 0.5px;
-                    `;
+                // Attach copy buttons to code blocks
+                attachCopyButtonsToCodeBlocks();
 
-                    button.onmouseover = () => {
-                        button.style.transform = 'translateY(-2px)';
-                        button.style.boxShadow = '0 6px 25px rgba(245, 158, 11, 0.5)';
-                    };
-                    
-                    button.onmouseout = () => {
-                        button.style.transform = 'translateY(0)';
-                        button.style.boxShadow = '0 4px 15px rgba(245, 158, 11, 0.3)';
-                    };
-
-                    button.onclick = () => {
-                        const code = pre.querySelector('code').textContent;
-                        navigator.clipboard.writeText(code).then(() => {
-                            const originalText = button.textContent;
-                            button.textContent = '✓ Copied!';
-                            button.style.background = 'linear-gradient(135deg, #10B981, #06B6D4)';
-                            setTimeout(() => {
-                                button.textContent = originalText;
-                                button.style.background = 'linear-gradient(135deg, #F59E0B, #06B6D4)';
-                            }, 2000);
-                        });
-                    };
-
-                    pre.style.position = 'relative';
-                    pre.appendChild(button);
-                });
-
-                // Update active nav link
+                // Update navigation menu to reflect active page
                 buildNavMenu();
 
-                // Scroll to top
-                document.getElementById('content').scrollTop = 0;
+                // Scroll content to top
+                contentDiv.scrollTop = 0;
 
             } catch (error) {
                 console.error('Error loading page:', error);
                 
+                // Build error message
                 let troubleshootingHTML = `
                     <div style="text-align: center; padding: 3rem 1rem; animation: fadeIn 0.5s ease-out;">
                         <h2 style="color: #EF4444; margin-bottom: 1rem; background: linear-gradient(135deg, #EF4444, #F87171); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">❌ Failed to Load Page</h2>
@@ -1314,11 +1384,12 @@
                 
                 troubleshootingHTML += `</div>`;
                 
+                // Render error message
                 document.getElementById('content').innerHTML = troubleshootingHTML;
             }
         }
 
-        // Initialize when DOM is ready
+        // Initialize app when DOM is ready
         document.addEventListener('DOMContentLoaded', init);
     </script>
 </body>
