@@ -1,0 +1,1325 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>GenGuard Spec - Security Analysis & Deployment Guide</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="GenGuard - Comprehensive security specifications for prompt injection detection and nondeterministic divergence analysis.">
+    
+    <!-- Syntax Highlighting - Dark Theme -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js@11/styles/atom-one-dark.min.css">
+    <!-- Marked for Markdown parsing -->
+    <script src="https://cdn.jsdelivr.net/npm/marked@11/marked.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/highlight.js@11/highlight.min.js"></script>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg-dark: #0a0e27;
+            --bg-darker: #050813;
+            --text-light: #E2E8F0;
+            --accent-gold: #F59E0B;
+            --accent-gold-dark: #D97706;
+            --accent-cyan: #06B6D4;
+            --accent-purple: #A78BFA;
+            --sidebar-bg: #0a0e27;
+            --sidebar-border: #1E293B;
+            --code-bg: #0F1729;
+            --link-color: #60A5FA;
+            --link-hover: #F59E0B;
+        }
+
+        html, body {
+            height: 100%;
+            background: linear-gradient(135deg, var(--bg-darker) 0%, var(--bg-dark) 100%);
+            color: var(--text-light);
+            font-family: 'Segoe UI', 'Helvetica Neue', sans-serif;
+            line-height: 1.6;
+            overflow: hidden;
+        }
+
+        #container {
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* Sidebar */
+        #sidebar {
+            width: 280px;
+            background: rgba(10, 14, 39, 0.7);
+            backdrop-filter: blur(10px);
+            border-right: 1px solid rgba(30, 41, 59, 0.5);
+            overflow-y: auto;
+            flex-shrink: 0;
+            box-shadow: inset -1px 0 0 rgba(245, 158, 11, 0.1);
+            transition: all 0.3s ease;
+        }
+
+        .sidebar-header {
+            padding: 1.5rem 1.5rem;
+            border-bottom: 1px solid rgba(30, 41, 59, 0.5);
+            position: sticky;
+            top: 0;
+            background: linear-gradient(180deg, rgba(245, 158, 11, 0.15) 0%, transparent 100%);
+            z-index: 10;
+            animation: slideDown 0.6s ease-out;
+        }
+
+        .sidebar-header h2 {
+            background: linear-gradient(135deg, var(--accent-gold) 0%, var(--accent-cyan) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            font-size: 1.3rem;
+            font-weight: 700;
+            margin: 0;
+            letter-spacing: 1px;
+        }
+
+        .nav-menu {
+            padding: 1rem 0;
+            list-style: none;
+        }
+
+        .nav-item {
+            margin: 0;
+            list-style: none;
+        }
+
+        .nav-link {
+            display: block;
+            padding: 0.85rem 1.5rem;
+            color: var(--text-light);
+            text-decoration: none;
+            transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+            cursor: pointer;
+            font-weight: 500;
+            border-left: 3px solid transparent;
+            position: relative;
+            margin: 0.25rem 0.75rem;
+            border-radius: 0 8px 8px 0;
+        }
+
+        .nav-link::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 3px;
+            background: linear-gradient(180deg, var(--accent-gold), var(--accent-cyan));
+            border-radius: 0 2px 2px 0;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .nav-link:hover {
+            color: var(--accent-gold);
+            transform: translateX(8px);
+            background: rgba(245, 158, 11, 0.12);
+            box-shadow: 0 0 20px rgba(245, 158, 11, 0.2);
+        }
+
+        .nav-link.active {
+            color: var(--accent-gold);
+            background: rgba(245, 158, 11, 0.18);
+            font-weight: 600;
+            box-shadow: 0 0 30px rgba(245, 158, 11, 0.3), inset 0 0 20px rgba(245, 158, 11, 0.1);
+        }
+
+        .nav-link.active::before {
+            opacity: 1;
+        }
+
+        .nav-section-title {
+            padding: 0.85rem 1.5rem 0.5rem;
+            color: #64748B;
+            font-size: 0.7rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-top: 1.25rem;
+            background: linear-gradient(90deg, transparent 0%, rgba(245, 158, 11, 0.2) 50%, transparent 100%);
+            padding-right: 1.5rem;
+        }
+
+        .nav-subsection {
+            margin-left: 0;
+            animation: fadeInUp 0.4s ease-out;
+        }
+
+        /* Main Content */
+        #main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            background: linear-gradient(135deg, var(--bg-dark) 0%, rgba(10, 14, 39, 0.8) 100%);
+        }
+
+        .main-header {
+            padding: 1rem 2rem;
+            border-bottom: 1px solid rgba(30, 41, 59, 0.5);
+            background: linear-gradient(135deg, rgba(245, 158, 11, 0.08) 0%, rgba(6, 182, 212, 0.05) 100%);
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(245, 158, 11, 0.1);
+            animation: slideDown 0.8s ease-out;
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+        }
+
+        .header-content {
+            max-width: 100%;
+            margin: 0 auto;
+            padding: 0 1rem;
+        }
+
+        #page-title {
+            background: linear-gradient(135deg, var(--accent-gold) 0%, var(--accent-cyan) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            font-size: 1.8rem;
+            font-weight: 800;
+            margin: 0;
+            letter-spacing: -0.5px;
+            animation: fadeInDown 0.8s ease-out;
+        }
+        
+        .header-logo {
+            width: 48px;
+            height: 48px;
+            flex-shrink: 0;
+        }
+
+        #content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 2.5rem;
+            max-width: 100%;
+            width: 100%;
+            animation: fadeIn 0.6s ease-out 0.2s both;
+        }
+
+        /* Markdown Styling */
+        .markdown-body {
+            color: var(--text-light);
+        }
+
+        .markdown-body h1,
+        .markdown-body h2,
+        .markdown-body h3,
+        .markdown-body h4,
+        .markdown-body h5,
+        .markdown-body h6 {
+            background: linear-gradient(135deg, var(--accent-gold), var(--accent-cyan));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            font-weight: 800;
+            margin: 2rem 0 1rem;
+            letter-spacing: -0.5px;
+            animation: fadeInUp 0.6s ease-out;
+        }
+
+        .markdown-body h1 {
+            font-size: 2.5rem;
+            border-bottom: 2px solid;
+            border-image: linear-gradient(90deg, var(--accent-gold), var(--accent-cyan)) 1;
+            padding-bottom: 1rem;
+            margin-top: 2.5rem;
+        }
+
+        .markdown-body h2 {
+            font-size: 2rem;
+            margin-top: 2.5rem;
+            position: relative;
+        }
+
+        .markdown-body h2::after {
+            content: '';
+            position: absolute;
+            bottom: -8px;
+            left: 0;
+            width: 60px;
+            height: 3px;
+            background: linear-gradient(90deg, var(--accent-gold), transparent);
+            border-radius: 2px;
+        }
+
+        .markdown-body h3 {
+            font-size: 1.5rem;
+        }
+
+        .markdown-body p {
+            margin: 1.25rem 0;
+            line-height: 1.9;
+            animation: fadeIn 0.5s ease-out;
+        }
+
+        .markdown-body a {
+            color: var(--link-color);
+            text-decoration: none;
+            transition: all 0.3s ease;
+            font-weight: 500;
+            position: relative;
+        }
+
+        .markdown-body a::after {
+            content: '';
+            position: absolute;
+            bottom: -2px;
+            left: 0;
+            width: 0;
+            height: 2px;
+            background: var(--accent-gold);
+            transition: width 0.3s ease;
+        }
+
+        .markdown-body a:hover {
+            color: var(--accent-gold);
+            text-shadow: 0 0 10px rgba(245, 158, 11, 0.5);
+        }
+
+        .markdown-body a:hover::after {
+            width: 100%;
+        }
+
+        .markdown-body pre {
+            background: linear-gradient(135deg, rgba(15, 23, 41, 0.8), rgba(10, 14, 39, 0.8));
+            border: 1px solid rgba(30, 41, 59, 0.8);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin: 1.5rem 0;
+            overflow-x: auto;
+            position: relative;
+            box-shadow: 0 8px 32px rgba(245, 158, 11, 0.1), inset 0 0 20px rgba(245, 158, 11, 0.05);
+            backdrop-filter: blur(10px);
+            animation: fadeInUp 0.6s ease-out;
+        }
+
+        .markdown-body code {
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+
+        .markdown-body pre code {
+            color: #A1D7FF;
+            background: none;
+            padding: 0;
+        }
+
+        .markdown-body :not(pre) > code {
+            background: linear-gradient(135deg, rgba(245, 158, 11, 0.2), rgba(6, 182, 212, 0.2));
+            padding: 0.3rem 0.7rem;
+            border-radius: 6px;
+            color: var(--accent-gold);
+            font-size: 0.85rem;
+            border: 1px solid rgba(245, 158, 11, 0.3);
+            transition: all 0.3s ease;
+        }
+
+        .markdown-body :not(pre) > code:hover {
+            box-shadow: 0 0 15px rgba(245, 158, 11, 0.4);
+            border-color: var(--accent-gold);
+        }
+
+        .markdown-body blockquote {
+            border-left: 4px solid;
+            border-image: linear-gradient(180deg, var(--accent-gold), var(--accent-cyan)) 1;
+            padding: 1.5rem 1.5rem 1.5rem 2rem;
+            background: linear-gradient(135deg, rgba(245, 158, 11, 0.08), rgba(6, 182, 212, 0.05));
+            margin: 1.5rem 0;
+            border-radius: 8px;
+            backdrop-filter: blur(10px);
+            box-shadow: inset 0 0 20px rgba(245, 158, 11, 0.05);
+        }
+
+        .markdown-body blockquote p {
+            margin: 0;
+            color: var(--text-light);
+        }
+
+        .markdown-body ul,
+        .markdown-body ol {
+            margin: 1.25rem 0;
+            padding-left: 2rem;
+        }
+
+        .markdown-body li {
+            margin: 0.75rem 0;
+            line-height: 1.9;
+            animation: fadeIn 0.5s ease-out;
+        }
+
+        .markdown-body table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 2rem 0;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 8px 32px rgba(245, 158, 11, 0.1);
+        }
+
+        .markdown-body th,
+        .markdown-body td {
+            border: 1px solid rgba(30, 41, 59, 0.8);
+            padding: 1rem;
+            text-align: left;
+        }
+
+        .markdown-body th {
+            background: linear-gradient(135deg, rgba(245, 158, 11, 0.2), rgba(6, 182, 212, 0.1));
+            color: var(--accent-gold);
+            font-weight: 700;
+            text-transform: uppercase;
+            font-size: 0.85rem;
+            letter-spacing: 1px;
+        }
+
+        .markdown-body tr:nth-child(even) {
+            background: rgba(10, 14, 39, 0.5);
+        }
+
+        .markdown-body tr:hover {
+            background: rgba(245, 158, 11, 0.1);
+            transition: background 0.2s ease;
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 12px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: rgba(10, 14, 39, 0.5);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: linear-gradient(180deg, var(--accent-gold), var(--accent-cyan));
+            border-radius: 6px;
+            transition: all 0.3s ease;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: linear-gradient(180deg, var(--accent-gold), var(--accent-cyan));
+            box-shadow: 0 0 15px rgba(245, 158, 11, 0.4);
+        }
+
+        /* Futuristic Footer */
+        .futuristic-footer {
+            border-top: 1px solid rgba(30, 41, 59, 0.5);
+            background: linear-gradient(180deg, transparent, rgba(245, 158, 11, 0.05));
+            backdrop-filter: blur(10px);
+            padding: 1rem 2rem;
+            margin-top: 3rem;
+            animation: slideUp 0.8s ease-out 0.4s both;
+        }
+
+        .footer-content {
+            max-width: 900px;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1.5rem;
+        }
+
+        .footer-divider {
+            width: 100%;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, rgba(245, 158, 11, 0.4), transparent);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .footer-divider::before {
+            content: '';
+            position: absolute;
+            left: -100%;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(245, 158, 11, 0.8), transparent);
+            animation: shimmer 3s infinite;
+        }
+
+        .footer-text-container {
+            text-align: center;
+        }
+
+        .footer-text {
+            margin: 0;
+            font-size: 0.95rem;
+            font-weight: 600;
+            letter-spacing: 1.5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            animation: fadeInUp 0.8s ease-out 0.5s both;
+        }
+
+        .footer-label {
+            color: #94A3B8;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .footer-brand {
+            background: linear-gradient(135deg, var(--accent-gold) 0%, var(--accent-cyan) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            font-weight: 800;
+            font-size: 1rem;
+            letter-spacing: 0.5px;
+        }
+
+        /* Mobile Menu Toggle */
+        #sidebar-toggle {
+            display: none;
+            position: fixed;
+            top: 1rem;
+            right: 1rem;
+            z-index: 2000;
+            background: linear-gradient(135deg, var(--accent-gold), var(--accent-cyan));
+            border: none;
+            color: var(--bg-dark);
+            width: 44px;
+            height: 44px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 1.25rem;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(245, 158, 11, 0.3);
+        }
+
+        #sidebar-toggle:hover {
+            transform: scale(1.05);
+            box-shadow: 0 6px 25px rgba(245, 158, 11, 0.5);
+        }
+
+        #sidebar-toggle:active {
+            transform: scale(0.95);
+        }
+
+        /* Responsive */
+        @media (max-width: 1024px) {
+            #sidebar {
+                width: 240px;
+            }
+            
+            #content {
+                padding: 2rem 1.5rem;
+            }
+        }
+
+        @media (max-width: 768px) {
+            #sidebar-toggle {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                right: 1rem;
+                left: auto;
+            }
+
+            #container {
+                flex-direction: column;
+            }
+
+            #sidebar {
+                position: fixed;
+                left: 0;
+                top: 0;
+                width: 280px;
+                height: 100vh;
+                z-index: 1999;
+                transform: translateX(-100%);
+                transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+                box-shadow: 4px 0 20px rgba(0, 0, 0, 0.5);
+            }
+
+            #sidebar.active {
+                transform: translateX(0);
+            }
+
+            #main {
+                flex: 1;
+                width: 100%;
+            }
+
+            .main-header {
+                padding: 1rem 1.5rem;
+                padding-left: 4rem;
+                gap: 1rem;
+            }
+
+            #page-title {
+                font-size: 1.4rem;
+            }
+            
+            .header-logo {
+                width: 40px;
+                height: 40px;
+            }
+
+            #content {
+                padding: 1.5rem 1rem;
+                max-width: 100%;
+                padding-top: 2rem;
+            }
+
+            .markdown-body h1 {
+                font-size: 1.8rem;
+            }
+
+            .markdown-body h2 {
+                font-size: 1.4rem;
+            }
+
+            .markdown-body h3 {
+                font-size: 1.2rem;
+            }
+
+            .markdown-body p {
+                font-size: 0.95rem;
+            }
+
+            .markdown-body pre {
+                padding: 1rem;
+                border-radius: 8px;
+                margin: 1rem 0;
+            }
+
+            .markdown-body table {
+                font-size: 0.85rem;
+                margin: 1rem 0;
+            }
+
+            .markdown-body table th,
+            .markdown-body table td {
+                padding: 0.75rem 0.5rem;
+            }
+
+            .markdown-body ul,
+            .markdown-body ol {
+                padding-left: 1.5rem;
+            }
+
+            .futuristic-footer {
+                padding: 2rem 1.5rem;
+                margin-top: 2rem;
+            }
+
+            .footer-text {
+                font-size: 1rem;
+                gap: 0.5rem;
+            }
+
+            .footer-label {
+                font-size: 0.85rem;
+            }
+
+            .footer-brand {
+                font-size: 1rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            #sidebar-toggle {
+                width: 40px;
+                height: 40px;
+                font-size: 1.1rem;
+                top: 0.5rem;
+                right: 0.5rem;
+                left: auto;
+            }
+
+            #sidebar {
+                width: 100%;
+            }
+
+            .main-header {
+                padding: 0.8rem 1rem;
+                padding-right: 50px;
+            }
+
+            #page-title {
+                font-size: 1.2rem;
+            }
+            
+            .header-logo {
+                width: 40px;
+                height: 40px;
+            }
+
+            #content {
+                padding: 1rem 0.75rem;
+                padding-top: 1.5rem;
+            }
+
+            .markdown-body h1 {
+                font-size: 1.5rem;
+                border-bottom: 1px solid rgba(30, 41, 59, 0.5);
+                padding-bottom: 0.5rem;
+            }
+
+            .markdown-body h2 {
+                font-size: 1.2rem;
+                margin-top: 1.5rem;
+            }
+
+            .markdown-body h3 {
+                font-size: 1rem;
+            }
+
+            .markdown-body p {
+                font-size: 0.9rem;
+                line-height: 1.6;
+            }
+
+            .markdown-body pre {
+                padding: 0.75rem;
+                font-size: 0.8rem;
+                border-radius: 6px;
+            }
+
+            .markdown-body ul,
+            .markdown-body ol {
+                padding-left: 1.25rem;
+                margin: 0.75rem 0;
+            }
+
+            .markdown-body li {
+                margin: 0.4rem 0;
+            }
+
+            .markdown-body blockquote {
+                padding: 1rem;
+                margin: 1rem 0;
+            }
+
+            .nav-link {
+                padding: 0.7rem 1.25rem;
+                font-size: 0.95rem;
+            }
+
+            .nav-section-title {
+                padding: 0.7rem 1.25rem 0.4rem;
+                font-size: 0.65rem;
+            }
+        }
+
+        @media (max-width: 360px) {
+            #page-title {
+                font-size: 1.2rem;
+            }
+
+            #content {
+                padding: 0.75rem;
+            }
+
+            .markdown-body h2 {
+                font-size: 1rem;
+            }
+
+            .markdown-body h3 {
+                font-size: 0.95rem;
+            }
+
+            .markdown-body p {
+                font-size: 0.85rem;
+            }
+        }
+
+        /* Touch optimizations */
+        @media (hover: none) and (pointer: coarse) {
+            .nav-link, .markdown-body a, button {
+                padding: 0.85rem;
+                min-height: 44px;
+                min-width: 44px;
+            }
+
+            .nav-link {
+                padding: 0.85rem 1.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <button id="sidebar-toggle" title="Toggle menu">☰</button>
+    <div id="container">
+        <!-- Sidebar -->
+        <aside id="sidebar">
+            <div class="sidebar-header">
+                <div style="display: flex; align-items: center; gap: 0.75rem; margin: 0; padding: 1.5rem 1.5rem 1rem;">
+                    <svg style="width: 32px; height: 32px; flex-shrink: 0;" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+                        <defs>
+                            <linearGradient id="logoGradientSidebar" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" style="stop-color:#F59E0B;stop-opacity:1" />
+                                <stop offset="100%" style="stop-color:#06B6D4;stop-opacity:1" />
+                            </linearGradient>
+                        </defs>
+                        <!-- Shield shape -->
+                        <path d="M 24 4 L 36 8 L 36 18 C 36 28 24 42 24 42 C 24 42 12 28 12 18 L 12 8 Z" fill="none" stroke="url(#logoGradientSidebar)" stroke-width="1.5" stroke-linejoin="round"/>
+                        <!-- Lock symbol inside shield -->
+                        <circle cx="24" cy="24" r="8" fill="none" stroke="url(#logoGradientSidebar)" stroke-width="1.5"/>
+                        <path d="M 20 26 L 20 30 C 20 31.1 20.9 32 22 32 L 26 32 C 27.1 32 28 31.1 28 30 L 28 26" fill="none" stroke="url(#logoGradientSidebar)" stroke-width="1.5" stroke-linecap="round"/>
+                        <!-- Accent dot -->
+                        <circle cx="24" cy="28" r="1.5" fill="#F59E0B" opacity="0.8"/>
+                        <!-- Glow effect -->
+                        <circle cx="24" cy="24" r="20" fill="none" stroke="url(#logoGradientSidebar)" stroke-width="0.5" opacity="0.3"/>
+                    </svg>
+                    <span style="background: linear-gradient(135deg, #F59E0B 0%, #06B6D4 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; font-weight: 800; font-size: 1.1rem; letter-spacing: 0.5px;">GenGuard</span>
+                </div>
+            </div>
+            <nav id="nav-menu" class="nav-menu"></nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main id="main">
+            <header class="main-header">
+                <svg class="header-logo" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+                    <defs>
+                        <linearGradient id="logoGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" style="stop-color:#F59E0B;stop-opacity:1" />
+                            <stop offset="100%" style="stop-color:#06B6D4;stop-opacity:1" />
+                        </linearGradient>
+                    </defs>
+                    <!-- Shield shape -->
+                    <path d="M 24 4 L 36 8 L 36 18 C 36 28 24 42 24 42 C 24 42 12 28 12 18 L 12 8 Z" fill="none" stroke="url(#logoGradient)" stroke-width="1.5" stroke-linejoin="round"/>
+                    <!-- Lock symbol inside shield -->
+                    <circle cx="24" cy="24" r="8" fill="none" stroke="url(#logoGradient)" stroke-width="1.5"/>
+                    <path d="M 20 26 L 20 30 C 20 31.1 20.9 32 22 32 L 26 32 C 27.1 32 28 31.1 28 30 L 28 26" fill="none" stroke="url(#logoGradient)" stroke-width="1.5" stroke-linecap="round"/>
+                    <!-- Accent dot -->
+                    <circle cx="24" cy="28" r="1.5" fill="#F59E0B" opacity="0.8"/>
+                    <!-- Glow effect -->
+                    <circle cx="24" cy="24" r="20" fill="none" stroke="url(#logoGradient)" stroke-width="0.5" opacity="0.3"/>
+                </svg>
+                <div class="header-content">
+                    <h1 id="page-title">GenGuard Spec</h1>
+                </div>
+            </header>
+            <article id="content" class="markdown-body">
+                <div style="text-align: center; padding: 3rem 1rem;">
+                    <div style="display: inline-block; text-align: center;">
+                        <div style="
+                            width: 50px; 
+                            height: 50px; 
+                            border: 3px solid rgba(245, 158, 11, 0.3); 
+                            border-top: 3px solid #F59E0B;
+                            border-right: 3px solid #06B6D4;
+                            border-radius: 50%; 
+                            animation: spin 1.2s linear infinite;
+                            margin: 0 auto 1.5rem;
+                            box-shadow: 0 0 30px rgba(245, 158, 11, 0.3);
+                        "></div>
+                        <p style="color: #A1D7FF; font-size: 1.1rem; margin: 0; font-weight: 500; letter-spacing: 0.5px;">Loading documentation...</p>
+                        <div style="margin-top: 1.5rem; display: flex; gap: 0.5rem; justify-content: center; animation: pulse 2s ease-in-out infinite;">
+                            <div style="width: 8px; height: 8px; background: var(--accent-gold); border-radius: 50%; animation: bounce 1.4s infinite; animation-delay: 0s;"></div>
+                            <div style="width: 8px; height: 8px; background: var(--accent-cyan); border-radius: 50%; animation: bounce 1.4s infinite; animation-delay: 0.2s;"></div>
+                            <div style="width: 8px; height: 8px; background: var(--accent-gold); border-radius: 50%; animation: bounce 1.4s infinite; animation-delay: 0.4s;"></div>
+                        </div>
+                        <p id="loading-hint" style="color: #64748B; font-size: 0.85rem; margin-top: 1.5rem; display: none;">
+                            ⏱️ If stuck here, see the red banner above ☝️
+                        </p>
+                    </div>
+                </div>
+            </article>
+            
+            <footer id="footer" class="futuristic-footer">
+                <div class="footer-content">
+                    <div class="footer-text-container">
+                        <p class="footer-text">
+                            <span class="footer-label">Built by</span>
+                            <span class="footer-brand">U_StackLabs</span>
+                        </p>
+                    </div>
+                </div>
+            </footer>
+        </main>
+    </div>
+
+    <style>
+        /* Advanced Animations */
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+            to {
+                opacity: 1;
+            }
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes fadeInDown {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes spin {
+            to { 
+                transform: rotate(360deg); 
+            }
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.7;
+            }
+        }
+
+        @keyframes glow {
+            0%, 100% {
+                box-shadow: 0 0 20px rgba(245, 158, 11, 0.3);
+            }
+            50% {
+                box-shadow: 0 0 40px rgba(245, 158, 11, 0.6);
+            }
+        }
+
+        @keyframes float {
+            0%, 100% {
+                transform: translateY(0px);
+            }
+            50% {
+                transform: translateY(-10px);
+            }
+        }
+
+        @keyframes bounce {
+            0%, 100% {
+                transform: translateY(0);
+                opacity: 1;
+            }
+            50% {
+                transform: translateY(-15px);
+                opacity: 0.7;
+            }
+        }
+
+        @keyframes shimmer {
+            0% {
+                left: -100%;
+            }
+            100% {
+                left: 100%;
+            }
+        }
+
+        @keyframes expandLine {
+            to {
+                width: 100%;
+            }
+        }
+
+        @keyframes expandLineReverse {
+            to {
+                width: 100%;
+            }
+        }
+
+        /* Staggered animations for nav items */
+        .nav-link:nth-child(1) {
+            animation: slideUp 0.5s ease-out 0.1s both;
+        }
+
+        .nav-link:nth-child(2) {
+            animation: slideUp 0.5s ease-out 0.2s both;
+        }
+
+        .nav-link:nth-child(3) {
+            animation: slideUp 0.5s ease-out 0.3s both;
+        }
+
+        .nav-link:nth-child(n+4) {
+            animation: slideUp 0.5s ease-out 0.4s both;
+        }
+    </style>
+
+    <script>
+        // Configure marked options
+        marked.setOptions({
+            breaks: true,
+            gfm: true,
+            pedantic: false,
+        });
+
+        // Configure highlight.js for code blocks (with fallback if hljs not available)
+        marked.setOptions({
+            highlight: (code, lang) => {
+                if (typeof hljs !== 'undefined') {
+                    if (lang && hljs.getLanguage(lang)) {
+                        return hljs.highlight(code, { language: lang }).value;
+                    }
+                    return hljs.highlightAuto(code).value;
+                }
+                return code; // Return plain code if hljs is not available
+            }
+        });
+
+        // Check if running locally (file:// protocol)
+        const isLocalFile = window.location.protocol === 'file:';
+
+        // Navigation menu structure
+        const navItems = [
+            { label: '🏠 Home', path: 'README.md', section: null },
+            { label: 'Attack Vectors', section: true },
+            { label: '🎯 Vector 1: Prompt Injection', path: 'attack_vector_1_prompt_injection.md', section: 'attack-vectors' },
+            { label: '⚡ Vector 2: Nondeterministic Divergence', path: 'attack_vector_2_nondeterministic_divergence.md', section: 'attack-vectors' },
+            { label: 'Resources', section: true },
+            { label: '🚀 Deployment Guide', path: 'deployment_guide.md', section: 'resources' },
+        ];
+
+        let currentPage = 'README.md';
+
+        // Initialize app
+        async function init() {
+            buildNavMenu();
+            setupMobileMenuToggle();
+            
+            // Show warning if running locally from file://
+            if (isLocalFile) {
+                console.warn('⚠️ Running from file:// protocol. Some features may be limited.');
+                showLocalServerWarning();
+            }
+            
+            await loadPage('README.md');
+        }
+
+        // Mobile menu toggle
+        function setupMobileMenuToggle() {
+            const sidebar = document.getElementById('sidebar');
+            const toggle = document.getElementById('sidebar-toggle');
+            
+            if (!toggle) return;
+
+            toggle.addEventListener('click', () => {
+                sidebar.classList.toggle('active');
+            });
+
+            // Close sidebar when clicking on a nav link
+            sidebar.addEventListener('click', (e) => {
+                if (e.target.classList.contains('nav-link')) {
+                    sidebar.classList.remove('active');
+                }
+            });
+
+            // Close sidebar when clicking outside
+            document.addEventListener('click', (e) => {
+                if (!sidebar.contains(e.target) && !toggle.contains(e.target)) {
+                    sidebar.classList.remove('active');
+                }
+            });
+
+            // Close sidebar on window resize to desktop view
+            window.addEventListener('resize', () => {
+                if (window.innerWidth > 768) {
+                    sidebar.classList.remove('active');
+                }
+            });
+        }
+
+        // Show warning about local file restrictions
+        function showLocalServerWarning() {
+            const warning = document.createElement('div');
+            warning.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                background: linear-gradient(90deg, #EF4444, #F87171);
+                color: white;
+                padding: 14px 16px;
+                text-align: center;
+                font-weight: 600;
+                z-index: 1000;
+                font-size: 0.95rem;
+                box-shadow: 0 8px 32px rgba(239, 68, 68, 0.4);
+                animation: slideDown 0.4s ease-out;
+            `;
+            warning.innerHTML = `
+                ⚠️ Running from file system. <strong>To fix "Failed to fetch" errors, run a local server:</strong>
+                <code style="background: rgba(0,0,0,0.3); padding: 6px 10px; border-radius: 4px; margin: 0 6px; font-size: 0.9rem; border: 1px solid rgba(255,255,255,0.2);">
+                    python -m http.server 8000
+                </code>
+                Then open <strong>http://localhost:8000</strong>
+            `;
+            document.body.insertBefore(warning, document.body.firstChild);
+            
+            // Auto-hide after 8 seconds
+            setTimeout(() => {
+                if (warning.parentNode) {
+                    warning.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+                    warning.style.opacity = '0';
+                    warning.style.transform = 'translateY(-100%)';
+                    setTimeout(() => warning.remove(), 300);
+                }
+            }, 8000);
+        }
+
+        // Build navigation menu
+        function buildNavMenu() {
+            const navMenu = document.getElementById('nav-menu');
+            navMenu.innerHTML = '';
+
+            let currentSection = null;
+            let sectionContainer = null;
+
+            navItems.forEach(item => {
+                if (item.section === true) {
+                    // Section title
+                    const title = document.createElement('div');
+                    title.className = 'nav-section-title';
+                    title.textContent = item.label;
+                    navMenu.appendChild(title);
+                    currentSection = null;
+                    sectionContainer = null;
+                } else {
+                    // Navigation link
+                    const link = document.createElement('a');
+                    link.href = '#';
+                    link.className = 'nav-link';
+                    if (currentPage === item.path) {
+                        link.classList.add('active');
+                    }
+                    link.textContent = item.label;
+                    link.onclick = (e) => {
+                        e.preventDefault();
+                        loadPage(item.path);
+                    };
+
+                    let container = navMenu;
+                    if (item.section) {
+                        if (currentSection !== item.section) {
+                            sectionContainer = document.createElement('div');
+                            sectionContainer.className = 'nav-subsection';
+                            navMenu.appendChild(sectionContainer);
+                            currentSection = item.section;
+                        }
+                        container = sectionContainer;
+                    }
+
+                    container.appendChild(link);
+                }
+            });
+        }
+
+        // Load and render markdown page
+        async function loadPage(path) {
+            currentPage = path;
+
+            // Update active link
+            document.querySelectorAll('.nav-link').forEach(link => {
+                link.classList.remove('active');
+            });
+
+            try {
+                // Try multiple path variations
+                const pathVariations = [
+                    path,
+                    './' + path,
+                    '/' + path,
+                ];
+
+                let response = null;
+                let lastError = null;
+
+                for (const pathVariation of pathVariations) {
+                    try {
+                        response = await fetch(pathVariation);
+                        if (response.ok) {
+                            console.log('✓ Loaded from:', pathVariation);
+                            break;
+                        }
+                    } catch (err) {
+                        lastError = err;
+                        console.warn('Failed to fetch from:', pathVariation, err.message);
+                    }
+                }
+
+                if (!response || !response.ok) {
+                    throw new Error(`Could not fetch ${path} from any path variation. ${lastError?.message || 'Check file exists in root directory.'}`);
+                }
+
+                const markdown = await response.text();
+
+                // Parse and render markdown
+                const html = marked.parse(markdown);
+
+                // Extract title from first h1
+                const titleMatch = markdown.match(/^#\s+(.+)$/m);
+                const title = titleMatch ? titleMatch[1] : path;
+                document.getElementById('page-title').textContent = title;
+
+                // Render content
+                document.getElementById('content').innerHTML = html;
+
+                // Highlight code blocks (if hljs is available)
+                if (typeof hljs !== 'undefined') {
+                    document.querySelectorAll('pre code').forEach(block => {
+                        hljs.highlightElement(block);
+                    });
+                }
+
+                // Make external links open in new tab
+                document.querySelectorAll('a[href^="http"]').forEach(link => {
+                    link.target = '_blank';
+                    link.rel = 'noopener noreferrer';
+                });
+
+                // Add copy button to code blocks
+                document.querySelectorAll('pre').forEach((pre, index) => {
+                    const button = document.createElement('button');
+                    button.className = 'copy-btn';
+                    button.textContent = '📋 Copy';
+                    button.style.cssText = `
+                        position: absolute;
+                        top: 12px;
+                        right: 12px;
+                        background: linear-gradient(135deg, #F59E0B, #06B6D4);
+                        color: #0F172A;
+                        border: none;
+                        padding: 8px 16px;
+                        border-radius: 8px;
+                        cursor: pointer;
+                        font-weight: 600;
+                        font-size: 0.85rem;
+                        transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+                        z-index: 10;
+                        box-shadow: 0 4px 15px rgba(245, 158, 11, 0.3);
+                        letter-spacing: 0.5px;
+                    `;
+
+                    button.onmouseover = () => {
+                        button.style.transform = 'translateY(-2px)';
+                        button.style.boxShadow = '0 6px 25px rgba(245, 158, 11, 0.5)';
+                    };
+                    
+                    button.onmouseout = () => {
+                        button.style.transform = 'translateY(0)';
+                        button.style.boxShadow = '0 4px 15px rgba(245, 158, 11, 0.3)';
+                    };
+
+                    button.onclick = () => {
+                        const code = pre.querySelector('code').textContent;
+                        navigator.clipboard.writeText(code).then(() => {
+                            const originalText = button.textContent;
+                            button.textContent = '✓ Copied!';
+                            button.style.background = 'linear-gradient(135deg, #10B981, #06B6D4)';
+                            setTimeout(() => {
+                                button.textContent = originalText;
+                                button.style.background = 'linear-gradient(135deg, #F59E0B, #06B6D4)';
+                            }, 2000);
+                        });
+                    };
+
+                    pre.style.position = 'relative';
+                    pre.appendChild(button);
+                });
+
+                // Update active nav link
+                buildNavMenu();
+
+                // Scroll to top
+                document.getElementById('content').scrollTop = 0;
+
+            } catch (error) {
+                console.error('Error loading page:', error);
+                
+                let troubleshootingHTML = `
+                    <div style="text-align: center; padding: 3rem 1rem; animation: fadeIn 0.5s ease-out;">
+                        <h2 style="color: #EF4444; margin-bottom: 1rem; background: linear-gradient(135deg, #EF4444, #F87171); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">❌ Failed to Load Page</h2>
+                        <p style="color: #E2E8F0; margin-bottom: 1.5rem; font-size: 1rem;">
+                            <strong>Error:</strong> ${error.message}
+                        </p>`;
+                
+                if (isLocalFile) {
+                    troubleshootingHTML += `
+                        <div style="background: linear-gradient(135deg, rgba(239, 68, 68, 0.15), rgba(239, 68, 68, 0.08)); border: 2px solid rgba(239, 68, 68, 0.5); border-radius: 12px; padding: 1.5rem; margin: 1.5rem auto; text-align: left; max-width: 600px; backdrop-filter: blur(10px); box-shadow: 0 8px 32px rgba(239, 68, 68, 0.1);">
+                            <p style="color: #F87171; font-weight: 700; margin-bottom: 1rem; font-size: 1.05rem;">🔧 Fix for Local Testing:</p>
+                            <p style="color: #E2E8F0; margin-bottom: 0.75rem;">You're running from the file system (file://), which has security restrictions.</p>
+                            <p style="color: #E2E8F0; margin-bottom: 1rem;">Open PowerShell/Terminal in this folder and run:</p>
+                            <code style="background: linear-gradient(135deg, rgba(15, 23, 41, 0.8), rgba(10, 14, 39, 0.8)); padding: 1rem; border-radius: 8px; display: block; margin: 0.75rem 0; font-family: monospace; color: #98C379; border: 1px solid rgba(152, 195, 121, 0.3); font-weight: 600; letter-spacing: 0.5px;">
+                                python -m http.server 8000
+                            </code>
+                            <p style="color: #E2E8F0; margin-top: 1rem; margin-bottom: 0.75rem;">Then open your browser to:</p>
+                            <code style="background: linear-gradient(135deg, rgba(15, 23, 41, 0.8), rgba(10, 14, 39, 0.8)); padding: 1rem; border-radius: 8px; display: block; margin: 0.75rem 0; font-family: monospace; color: #60A5FA; border: 1px solid rgba(96, 165, 250, 0.3); font-weight: 600; letter-spacing: 0.5px;">
+                                http://localhost:8000
+                            </code>
+                        </div>`;
+                } else {
+                    troubleshootingHTML += `
+                        <div style="background: linear-gradient(135deg, rgba(239, 68, 68, 0.15), rgba(239, 68, 68, 0.08)); border: 2px solid rgba(239, 68, 68, 0.5); border-radius: 12px; padding: 1.5rem; margin: 1.5rem auto; text-align: left; max-width: 600px; backdrop-filter: blur(10px); box-shadow: 0 8px 32px rgba(239, 68, 68, 0.1);">
+                            <p style="color: #F87171; font-weight: 700; margin-bottom: 1rem; font-size: 1.05rem;">⚠️ Troubleshooting:</p>
+                            <ul style="color: #E2E8F0; margin: 0; padding-left: 1.5rem; line-height: 2;">
+                                <li>✓ Ensure all .md files are in the same directory as index.html</li>
+                                <li>✓ Check that filenames match exactly (case-sensitive)</li>
+                                <li>✓ Verify the vercel.json or server is configured correctly</li>
+                                <li>✓ Available files: README.md, attack_vector_1_prompt_injection.md, attack_vector_2_nondeterministic_divergence.md, deployment_guide.md</li>
+                            </ul>
+                        </div>`;
+                }
+                
+                troubleshootingHTML += `</div>`;
+                
+                document.getElementById('content').innerHTML = troubleshootingHTML;
+            }
+        }
+
+        // Initialize when DOM is ready
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>
