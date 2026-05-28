@@ -1014,7 +1014,7 @@
 
         // Navigation menu structure
         const navItems = [
-            { label: '🏠 Home', path: 'README.md', section: null },
+            { label: '🏠 Home', path: 'home', section: null },
             { label: 'Attack Vectors', section: true },
             { label: '🎯 Vector 1: Prompt Injection', path: 'attack_vector_1_prompt_injection.md', section: 'attack-vectors' },
             { label: '⚡ Vector 2: Nondeterministic Divergence', path: 'attack_vector_2_nondeterministic_divergence.md', section: 'attack-vectors' },
@@ -1022,7 +1022,7 @@
             { label: '🚀 Deployment Guide', path: 'deployment_guide.md', section: 'resources' },
         ];
 
-        let currentPage = 'README.md';
+        let currentPage = 'home';
 
         /**
          * Sanitize HTML content to prevent script injection and clean up formatting anomalies
@@ -1304,6 +1304,69 @@
             clearContentArea();
 
             try {
+                // Special handling for Home page
+                if (path === 'home') {
+                    const homePageHTML = `
+                        <h1>Welcome to GenGuard Spec</h1>
+                        <p style="font-size: 1.1rem; margin: 1.5rem 0; line-height: 1.8;">
+                            GenGuard Spec is a comprehensive security analysis and deployment guide focused on identifying and mitigating critical vulnerabilities in Large Language Model (LLM) systems, particularly those deployed on consensus networks.
+                        </p>
+                        
+                        <h2>What We Cover</h2>
+                        <ul style="font-size: 1rem; margin: 1.5rem 0;">
+                            <li><strong>Prompt Injection Attacks:</strong> Understand how malicious inputs can manipulate LLM behavior and compromise system security.</li>
+                            <li><strong>Nondeterministic Divergence:</strong> Explore inconsistencies in LLM outputs that can lead to consensus failures and data integrity issues.</li>
+                            <li><strong>Deployment Best Practices:</strong> Learn secure configuration strategies for deploying GenGuard specifications in production environments.</li>
+                        </ul>
+                        
+                        <h2>Quick Start</h2>
+                        <p style="font-size: 1rem; margin: 1.5rem 0; line-height: 1.8;">
+                            Navigate through the sidebar to explore detailed security analysis, attack vectors, and deployment guidance. Each section provides in-depth technical specifications and recommendations for securing LLM-based systems.
+                        </p>
+                        
+                        <h2>Architecture Overview</h2>
+                        <p style="font-size: 1rem; margin: 1.5rem 0; line-height: 1.8;">
+                            This specification suite is designed to be implemented across multiple layers of your LLM infrastructure, from input validation and model behavior monitoring to consensus verification and output validation. Our modular approach allows you to adopt security measures incrementally while maintaining system compatibility.
+                        </p>
+                        
+                        <h2>Key Sections</h2>
+                        <table style="width: 100%; margin: 1.5rem 0;">
+                            <tr>
+                                <th style="text-align: left; padding: 0.75rem;">Section</th>
+                                <th style="text-align: left; padding: 0.75rem;">Purpose</th>
+                            </tr>
+                            <tr>
+                                <td style="padding: 0.75rem;"><strong>Attack Vectors</strong></td>
+                                <td style="padding: 0.75rem;">Detailed analysis of known vulnerabilities and attack patterns</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 0.75rem;"><strong>Deployment Guide</strong></td>
+                                <td style="padding: 0.75rem;">Step-by-step instructions for implementing security controls</td>
+                            </tr>
+                        </table>
+                        
+                        <div style="background: linear-gradient(135deg, rgba(245, 158, 11, 0.15), rgba(6, 182, 212, 0.1)); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 12px; padding: 1.5rem; margin: 2rem 0;">
+                            <p style="margin: 0; color: var(--text-light); font-weight: 500;">
+                                💡 <strong>Pro Tip:</strong> Start with the Attack Vectors section to understand common vulnerabilities, then move to the Deployment Guide for implementation details.
+                            </p>
+                        </div>
+                    `;
+                    
+                    document.getElementById('page-title').textContent = 'Home';
+                    const contentDiv = document.getElementById('content');
+                    contentDiv.innerHTML = homePageHTML;
+                    
+                    // Attach copy buttons to code blocks (if any)
+                    attachCopyButtonsToCodeBlocks();
+                    
+                    // Update navigation menu to reflect active page
+                    buildNavMenu();
+                    
+                    // Scroll content to top
+                    contentDiv.scrollTop = 0;
+                    return;
+                }
+
                 // Fetch markdown file with proper error handling
                 const markdown = await fetchMarkdownFile(path);
 
