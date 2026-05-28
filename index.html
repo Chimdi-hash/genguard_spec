@@ -1062,7 +1062,7 @@
         }
 
         /**
-         * Initialize app - explicitly load README.md on landing route
+         * Initialize app - load Home page on landing route
          */
         async function init() {
             setupMobileMenuToggle();
@@ -1073,9 +1073,9 @@
                 showLocalServerWarning();
             }
             
-            // Default landing route: explicitly load README.md
+            // Default landing route: load Home page
             // buildNavMenu will be called from within loadPage after currentPage is updated
-            await loadPage('README.md');
+            await loadPage('home');
         }
 
         /**
